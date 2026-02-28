@@ -1,0 +1,10 @@
+services:
+  app:
+    image: ${ECR_IMAGE}
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      JDBC_URL: "jdbc:mysql://vprofile-devops-dev-mysql.ch48wasas7ep.ap-southeast-2.rds.amazonaws.com:3306/accounts?useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull"
+      JDBC_USER: "admin"
+      JDBC_PASS: "${JDBC_PASS}"

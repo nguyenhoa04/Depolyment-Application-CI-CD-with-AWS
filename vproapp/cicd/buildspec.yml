@@ -1,0 +1,21 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO_URL
+  build:
+    commands:
+      - docker build -f "$CODEBUILD_SRC_DIR/Dockerfile" -t vprofile:$IMAGE_TAG "$CODEBUILD_SRC_DIR"
+      - docker tag vprofile:$IMAGE_TAG $ECR_REPO_URL:$IMAGE_TAG
+      - docker tag vprofile:$IMAGE_TAG $ECR_REPO_URL:latest
+  post_build:
+    commands:
+      - docker push $ECR_REPO_URL:$IMAGE_TAG
+      - docker push $ECR_REPO_URL:latest
+      - mkdir -p bundle
+      - cp docker-compose.yml bundle/
+      - cp -r cicd/codedeploy/* bundle/
+      - (cd bundle && zip -r ../deploy.zip .)
+      - aws s3 cp deploy.zip s3://$ARTIFACT_BUCKET/vprofile/deploy-$IMAGE_TAG.zip
+      - aws deploy create-deployment --application-name "$CODEDEPLOY_APP" --deployment-group-name "$CODEDEPLOY_DG" --s3-location bucket=$ARTIFACT_BUCKET,key=vprofile/deploy-$IMAGE_TAG.zip,bundleType=zip --region $AWS_REGION

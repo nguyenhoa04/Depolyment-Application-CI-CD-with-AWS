@@ -1,0 +1,18 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /opt/vprofile-deploy
+hooks:
+  BeforeInstall:
+    - location: scripts/stop.sh
+      timeout: 300
+      runas: root
+  AfterInstall:
+    - location: scripts/deploy.sh
+      timeout: 900
+      runas: root
+  ValidateService:
+    - location: scripts/healthcheck.sh
+      timeout: 300
+      runas: root
