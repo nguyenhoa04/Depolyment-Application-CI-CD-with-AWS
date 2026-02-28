@@ -1,60 +1,62 @@
 # Deployment Application CI/CD with AWS
 
-Terraform infrastructure for deploying a containerized application on AWS with a CI/CD flow triggered from Bitbucket.
+This repository contains both:
 
-## Architecture
+- Infrastructure as Code (Terraform) for AWS deployment and CI/CD
+- Application source code (`vproapp`) used by the pipeline
 
-- VPC with 2 public subnets (ALB) and 2 private subnets (EC2 + RDS)
+## What is Provisioned
+
+- VPC with 2 public subnets and 2 private subnets
 - Internet Gateway and optional NAT Gateway
-- Application Load Balancer + target group + health checks
-- Auto Scaling Group (Amazon Linux 2023 EC2 instances)
-- RDS MySQL (Single-AZ, private)
+- ALB, target group, and listener
+- Auto Scaling Group for EC2 app instances
+- RDS MySQL (private, single-AZ)
 - ECR repository for container images
-- S3 artifact bucket (versioning + SSE)
-- CodeBuild project (source: Bitbucket via CodeConnections)
-- CodeDeploy application/deployment group (in-place deployment to ASG)
-- API Gateway + Lambda webhook endpoint to trigger CodeBuild
+- S3 artifact bucket (versioning + encryption)
+- CodeBuild + CodeDeploy integration
+- API Gateway + Lambda webhook trigger
 - SNS email alerts + CloudWatch alarms
 
 ## Repository Structure
 
 ```text
 .
-├── bootstrap/   # Creates Terraform backend resources (S3 + DynamoDB)
-└── main/        # Main infrastructure: network, compute, DB, CI/CD, monitoring
+├── bootstrap/      # Terraform backend bootstrap (S3 state + DynamoDB lock table)
+├── main/           # Main Terraform stack (network, compute, database, CICD, monitoring)
+└── vproapp/        # Java application source and CICD assets (buildspec, appspec, scripts)
 ```
 
 ## Prerequisites
 
 - Terraform `>= 1.5`
-- AWS account + IAM permissions to create all resources
-- AWS CLI configured (`aws configure`)
-- Bitbucket repository for application source code
+- AWS CLI configured with an account that can create required resources
 - AWS CodeConnections connection to Bitbucket
+- Bitbucket repository URL/branch for CodeBuild source
 
-## Configuration
+## Configure Terraform Variables
 
-1. Use the example file:
+Create tfvars from example:
 
 ```bash
 cp main/terraform.tfvars.example main/terraform.tfvars
 ```
 
-2. Fill required values in `main/terraform.tfvars`:
+Set required values in `main/terraform.tfvars`:
 
 - `bitbucket_repo_url`
 - `bitbucket_branch`
 - `codestar_connection_arn`
 - `alert_email`
 
-3. Optional overrides:
+Optional:
 
-- `db_password` (otherwise deterministic generated password is used)
-- `webhook_secret` (otherwise deterministic generated secret is used)
+- `db_password`
+- `webhook_secret`
 
-## Deploy
+## Deploy Infrastructure
 
-1. Bootstrap backend resources:
+1. Bootstrap backend:
 
 ```bash
 cd bootstrap
@@ -62,7 +64,7 @@ terraform init
 terraform apply
 ```
 
-2. Verify `main/backend.tf` points to your bootstrap S3 backend bucket/key.
+2. Confirm `main/backend.tf` matches your backend bucket/key.
 
 3. Deploy main stack:
 
@@ -73,17 +75,24 @@ terraform plan
 terraform apply
 ```
 
-4. Confirm SNS email subscription from inbox.
+4. Confirm SNS email subscription.
+5. Use output `bitbucket_webhook_url` in your Bitbucket webhook settings.
 
-5. After apply, get webhook URL from output `bitbucket_webhook_url` and configure Bitbucket webhook.
+## CI/CD Flow
+
+1. Bitbucket push event calls API Gateway webhook
+2. Lambda validates HMAC signature and starts CodeBuild
+3. CodeBuild builds/publishes image, creates deployment artifact
+4. CodeDeploy deploys to EC2 Auto Scaling Group instances
+5. ALB routes traffic to healthy targets
 
 ## Notes
 
-- This repository provisions infrastructure. Your application source/buildspec is expected in the Bitbucket repo (`cicd/buildspec.yml` path in CodeBuild config).
-- EC2 instances are private; access is intended via AWS SSM.
-- NAT can be disabled using `enable_nat = false` to reduce cost (with trade-offs for outbound private subnet access).
+- `vproapp/` is included in this repository, but current CodeBuild config uses Bitbucket as source.
+- EC2 instances are in private subnets; manage via AWS SSM.
+- NAT can be disabled (`enable_nat = false`) to reduce cost.
 
-## Cleanup
+## Destroy
 
 ```bash
 cd main && terraform destroy
