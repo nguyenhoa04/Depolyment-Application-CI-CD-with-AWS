@@ -1,0 +1,8 @@
+bitbucket_repo_url      = "https://bitbucket.org/your-workspace/your-repo.git"
+bitbucket_branch        = "aws-ci"
+codestar_connection_arn = "arn:aws:codeconnections:ap-southeast-2:123456789012:connection/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+alert_email             = "you@example.com"
+
+# Optional:
+# db_password   = "Use-Strong-Password-Here"
+# webhook_secret = "Set-A-Custom-Webhook-Secret"

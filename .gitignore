@@ -1,0 +1,20 @@
+# Terraform local data
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Plans and local variable overrides
+*.tfplan
+tfplan*
+*.tfvars
+!*.tfvars.example
+
+# Local/editor files
+.DS_Store
+*.code-workspace
